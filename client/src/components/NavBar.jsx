@@ -10,7 +10,7 @@ function NavBar({onlogout}){
 
     return(
         <>
-        <div className="Nav-class w-full h-[12vh] border-b border-gray-700 text-white flex  items-center px-6 ">
+        <div className="Nav-class  w-full h-[12vh] border-b border-gray-700 text-white flex  items-center px-6 ">
             
             <img src={icon} alt=":/" className="h-10 w-10 object-cover rounded-lg" />
             <div>

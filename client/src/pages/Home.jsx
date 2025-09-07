@@ -4,6 +4,7 @@ import NavBar from '../components/NavBar';
 import { Mic } from "lucide-react";
 import { useState } from "react";
 import Record from "../components/RecordButton"
+import Card from "../components/Card"
 
 
 
@@ -24,9 +25,9 @@ function Home() {
   
   <>
   
-  <NavBar onlogout={handleLogout}/>
+  <NavBar onlogout={handleLogout} />
 
-  <div className="remaining-page bg-white w-full h-[calc(100vh-64px)] flex flex-row">
+  <div className="remaining-page bg-white w-full flex flex-row h-screen">
     <div className="left-content w-[35%] bg-gray-900 flex flex-col items-center ">
         <div className="bg-gray-900 w-[90%] h-[370px] mt-5 rounded-lg border border-gray-600">
 
@@ -70,8 +71,19 @@ function Home() {
             </div>
         </div>
     </div>
-    <div className="right-content w-[65%] bg-blue-400">
-      Right Div
+
+
+
+    <div className="right-content w-[65%] bg-gray-900 overflow-auto p-5">
+        <div className="mt-5">
+            <input className="py-2 px-10 w-full rounded-lg outline-none text-gray-50 border border-gray-600 bg-gray-900" type='text' placeholder='Search notes...'/>
+        </div>
+
+        <div className="cards mt-5 flex flex-col gap-3">
+              <Card />
+              <Card />
+              <Card />
+        </div>
     </div>
   </div>
   
