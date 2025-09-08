@@ -16,15 +16,28 @@ function Home() {
   const [recordingTime, setRecordingTime] = useState(0); 
   const [speakerName, setSpeakerName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [audioStream, setAudioStream] = useState(null);
+  const [audioBlob, setAudioBlob] = useState(null);
   const timerRef = useRef(null);
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+
+
 
 
   const updateCardTitle = (cardId, newTitle) => {
   setCards(prev => prev.map(card => 
     card.id === cardId ? { ...card, title: newTitle } : card
-  ));
-};
+      ));
+    };
 
+  const filteredCards = cards.filter(card => {
+    if (!searchQuery) return true; 
+
+        return card.title.toLowerCase().includes(searchQuery.toLowerCase());
+    });
   
 
   const handleLogout = async () => {
@@ -35,20 +48,93 @@ function Home() {
     }
   };
 
-  const startRecording = () => {
-    console.log("🎙️ Recording started...");
+
+
+const handleMicClick = () => {
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
+    }
+    setIsRecording(!isRecording);
+  };
+
+
+  const startRecording =async () => {
+    try {console.log("🎙️ Recording started...");
     
+     const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        }
+      });
+      
+      setAudioStream(stream);
+      setIsRecording(true);
+      setRecordingTime(0);
+      audioChunksRef.current = [];
+
+      
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      
+      mediaRecorder.onstop = async () => {
+        console.log("🎙️ Recording stopped, processing audio...");
+        
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: 'audio/webm;codecs=opus' 
+        });
+        
+        setAudioBlob(audioBlob);
+        
+        
+        await sendAudioToBackend(audioBlob);
+        
+        
+        stream.getTracks().forEach(track => track.stop());
+        setAudioStream(null);
+      };
+
+      mediaRecorder.start();
+      console.log("🎙️ MediaRecorder started");
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Error accessing microphone. Please check permissions.');
+      setIsRecording(false);
+    }
+
+
+
+
     setRecordingTime(0);
   };
 
 
-
   const stopRecording = () => {
-    console.log("⏹️ Recording stopped...");
+
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+
+    setIsRecording(false);
     
     const finalDuration = formatTime(recordingTime);
 
-    // Add a new card at the top
     setCards((prev) => [
       {
          count: prev.length + 1 ,
@@ -61,15 +147,60 @@ function Home() {
           setRecordingTime(0);
           setSpeakerName("");
           
-
   };
+
+
+
+  const sendAudioToBackend = async (audioBlob) => {
+    try {
+      console.log("📤 Sending audio to backend...");
+      
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('speakerName', speakerName || "Sri Charan Chittineni");
+      formData.append('duration', recordingTime);
+      formData.append('timestamp', new Date().toISOString());
+
+      const response = await fetch('/api/upload-audio', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${currentUser?.accessToken || ''}`,
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Audio uploaded successfully:", result);
+      } else {
+        console.error("❌ Failed to upload audio:", response.statusText);
+      }
+      
+    } catch (error) {
+      console.error("❌ Error sending audio to backend:", error);
+    }
+  };
+
+
+  useEffect(() => {
+    return () => {
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [audioStream]);
+
+
+
 
   const formatTime = (seconds) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
-
 
   useEffect(() => {
   if (isRecording) {
@@ -94,29 +225,18 @@ function Home() {
 
 
 
-  const handleMicClick = () => {
-    if (!isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
-    }
-    setIsRecording(!isRecording);
-  };
+  
 
  
-    const filteredCards = cards.filter(card => {
-  if (!searchQuery) return true; 
-  
-  
-  
-  return card.title.toLowerCase().includes(searchQuery.toLowerCase());
-});
+    
+
+
+
+
 
 
 
   return (
-  
-  
   
   <>
   
