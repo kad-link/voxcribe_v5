@@ -101,7 +101,7 @@ const handleMicClick = () => {
         setAudioBlob(audioBlob);
         
         
-        await sendAudioToBackend(audioBlob);
+        await sendAudioToBackend(audioBlob, );
         
         
         stream.getTracks().forEach(track => track.stop());
@@ -151,17 +151,16 @@ const handleMicClick = () => {
 
 
 
-  const sendAudioToBackend = async (audioBlob) => {
+  const sendAudioToBackend = async (audioBlob, speaker, duration ) => {
     try {
-      console.log("📤 Sending audio to backend...");
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
-      formData.append('speakerName', speakerName || "Sri Charan Chittineni");
-      formData.append('duration', recordingTime);
+      formData.append('speaker', speaker || "Sri Charan Chittineni");
+      formData.append('duration', duration);
       formData.append('timestamp', new Date().toISOString());
 
-      const response = await fetch('/api/upload-audio', {
+      const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
         headers: {
@@ -172,11 +171,14 @@ const handleMicClick = () => {
       if (response.ok) {
         const result = await response.json();
         console.log("✅ Audio uploaded successfully:", result);
-      } else {
+      } 
+      else {
         console.error("❌ Failed to upload audio:", response.statusText);
       }
       
-    } catch (error) {
+    } 
+    
+    catch (error) {
       console.error("❌ Error sending audio to backend:", error);
     }
   };
