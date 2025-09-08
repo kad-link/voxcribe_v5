@@ -1,15 +1,31 @@
 import React from 'react';
 import { useAuth } from "../firebase/authContext";
 import NavBar from '../components/NavBar';
-import { Mic } from "lucide-react";
-import { useState } from "react";
+import { Mic} from "lucide-react";
 import Record from "../components/RecordButton"
 import Card from "../components/Card"
+import { useState, useEffect, useRef } from "react";
+
 
 
 
 function Home() {
   const { currentUser, logout } = useAuth();
+  const [cards, setCards] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0); 
+  const [speakerName, setSpeakerName] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const timerRef = useRef(null);
+
+
+  const updateCardTitle = (cardId, newTitle) => {
+  setCards(prev => prev.map(card => 
+    card.id === cardId ? { ...card, title: newTitle } : card
+  ));
+};
+
+  
 
   const handleLogout = async () => {
     try {
@@ -19,6 +35,85 @@ function Home() {
     }
   };
 
+  const startRecording = () => {
+    console.log("🎙️ Recording started...");
+    
+    setRecordingTime(0);
+  };
+
+
+
+  const stopRecording = () => {
+    console.log("⏹️ Recording stopped...");
+    
+    const finalDuration = formatTime(recordingTime);
+
+    // Add a new card at the top
+    setCards((prev) => [
+      {
+         count: prev.length + 1 ,
+          id: Date.now(),
+          duration: finalDuration,
+          speakerName: speakerName || "Sri Charan Chittineni" 
+        },
+          ...prev]);
+
+          setRecordingTime(0);
+          setSpeakerName("");
+          
+
+  };
+
+  const formatTime = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+
+  useEffect(() => {
+  if (isRecording) {
+    timerRef.current = setInterval(() => {
+      setRecordingTime(prev => prev + 1);
+    }, 1000);
+  } else {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  return () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+}, [isRecording]);
+
+  
+
+
+
+  const handleMicClick = () => {
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
+    }
+    setIsRecording(!isRecording);
+  };
+
+ 
+    const filteredCards = cards.filter(card => {
+  if (!searchQuery) return true; 
+  
+  
+  
+  return card.title.toLowerCase().includes(searchQuery.toLowerCase());
+});
+
+
+
   return (
   
   
@@ -27,7 +122,7 @@ function Home() {
   
   <NavBar onlogout={handleLogout} />
 
-  <div className="remaining-page bg-white w-full flex flex-row h-screen">
+  <div className="remaining-page bg-gray-900 w-full flex flex-row h-screen">
     <div className="left-content w-[35%] bg-gray-900 flex flex-col items-center ">
         <div className="bg-gray-900 w-[90%] h-[370px] mt-5 rounded-lg border border-gray-600">
 
@@ -39,13 +134,23 @@ function Home() {
                 
                 <div className="px-3 mt-7">
                 <h4 className="text-gray-300">Speaker Name :</h4>
-                <input type="text" placeholder="Enter speaker name . . ." className="w-full bg-gray-800 border border-gray-600 rounded-md p-2 outline-none " />
+                <input type="text" 
+                      placeholder="Enter speaker name . . ." 
+                      value={speakerName}  
+                      onChange={(e) => setSpeakerName(e.target.value)}
+                      className="w-full bg-gray-800 border border-gray-600 rounded-md p-2 outline-none text-gray-50" />
                 <h6 className="text-xs text-gray-400 mt-2">Will use your name : Sri Charan Chittineni</h6>
                 </div>
 
                 <div className="flex flex-col justify-center items-center mt-10">
-                  <Record />
-                  <h5 className="text-gray-500 mt-3">Click to start recording</h5>
+                  <Record onClick={handleMicClick} isRecording={isRecording}/>
+
+                 
+
+                  <h5 className="text-gray-500 mt-3">
+                {isRecording ? "Recording... Click to stop" : "Click to start recording"}
+              </h5>
+
                 </div>
 
         </div>
@@ -76,13 +181,34 @@ function Home() {
 
     <div className="right-content w-[65%] bg-gray-900 overflow-auto p-5">
         <div className="mt-5">
-            <input className="py-2 px-10 w-full rounded-lg outline-none text-gray-50 border border-gray-600 bg-gray-900" type='text' placeholder='Search notes...'/>
+            <input className="py-2 px-10 w-full rounded-lg outline-none text-gray-50 border border-gray-600 bg-gray-900"
+             type='text' 
+             placeholder='Search notes...'
+             value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+             />
         </div>
 
         <div className="cards mt-5 flex flex-col gap-3">
-              <Card />
-              <Card />
-              <Card />
+             {filteredCards.length === 0 && searchQuery ? (
+    <div className="text-center text-gray-500 mt-10">
+      <p>No recordings found matching "{searchQuery}"</p>
+    </div>
+  ) : filteredCards.length === 0 ? (
+    <div className="text-center text-gray-500 mt-10">
+      <p>No recordings yet. Start recording to see your notes here!</p>
+    </div>
+  ) : (
+    filteredCards.map((card) => (
+      <Card key={card.id}
+       count={card.count}
+        duration={card.duration}
+         speaker={card.speakerName}
+         title={card.title}
+         onTitleChange={(newTitle) => updateCardTitle(card.id, newTitle)}
+         />
+    ))
+  )}
         </div>
     </div>
   </div>
