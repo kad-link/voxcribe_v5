@@ -15,12 +15,122 @@ function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [audioStream, setAudioStream] = useState(null);
   const [audioBlob, setAudioBlob] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const timerRef = useRef(null);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Store the duration when recording stops to avoid timing issues
+  
+  const deleteRecording = async (cardId, recordingId) => {
+  if (!recordingId) {
+    console.log("❌ No recording ID available for deletion");
+    return;
+  }
+
+  // Show confirmation dialog
+  const confirmed = window.confirm("Are you sure you want to delete this recording? This action cannot be undone.");
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    console.log("🗑️ Deleting recording:", recordingId);
+
+    const response = await fetch(`http://localhost:3000/api/recordings/${recordingId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${currentUser?.accessToken || ''}`,
+      }
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log("✅ Recording deleted successfully:", result);
+
+      // Remove the card from the UI immediately
+      setCards(prev => prev.filter(card => card.id !== cardId));
+      
+      // Optional: Show success message
+      // You could add a toast notification here
+      
+    } else {
+      const errorData = await response.json();
+      console.error("❌ Failed to delete recording:", errorData);
+      alert("Failed to delete recording. Please try again.");
+    }
+
+  } catch (error) {
+    console.error("❌ Error deleting recording:", error);
+    alert("Error deleting recording. Please check your connection and try again.");
+  }
+};
+
+
+  const fetchRecordings = async()=>{
+
+    if (!currentUser?.uid) {
+        console.log("❌ No user ID available");
+        setIsLoading(false);
+        return;
+    }
+
+
+    try{
+      setIsLoading(true);
+      console.log("📋 Fetching recordings for user:", currentUser.uid);
+
+      const response = await fetch(`http://localhost:3000/api/recordings/${currentUser.uid}`,{
+        method:"GET",
+        headers: {
+          'Authorization': `Bearer ${currentUser?.accessToken || ''}`,
+        }
+      })
+
+      if(response.ok){
+        const result = await response.json();
+        console.log("✅ Fetched recordings:", result);
+
+        const transformedCards = result.recordings.map((recording, index) => ({
+          id: recording._id,
+          count: result.recordings.length - index, // Reverse count for newest first
+          recordingId: recording._id,
+          duration: formatTime(Math.floor(recording.duration)) || "00:00",
+          speakerName: recording.speaker,
+          title: recording.transcription && recording.transcription.length > 50 
+            ? recording.transcription.substring(0, 50) + '...' 
+            : recording.transcription || 'Untitled Recording',
+          transcription: recording.transcription || ""
+        }));
+
+        setCards(transformedCards);
+        console.log("📋 Loaded cards:", transformedCards.length);
+      } else {
+        console.error("❌ Failed to fetch recordings:", response.statusText);
+      }
+
+      }
+      catch(error){
+        console.error("❌ Error fetching recordings:", error);
+      }
+      finally {
+      setIsLoading(false);
+    }
+
+    
+  }
+
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchRecordings();
+    }
+  }, [currentUser]);
+
+
+
+
   const recordingDurationRef = useRef(0);
 
   const updateCardTitle = (cardId, newTitle) => {
@@ -92,6 +202,7 @@ function Home() {
         // Use the stored duration from when recording actually stopped
         const finalSpeaker = speakerName.trim() || currentUser.displayName;
         const finalDuration = recordingDurationRef.current;
+        const UserId = currentUser.uid;
 
         console.log("📤 Sending to backend:", {
           speaker: finalSpeaker,
@@ -99,7 +210,7 @@ function Home() {
           audioSize: audioBlob.size
         });
         
-        await sendAudioToBackend(audioBlob, finalSpeaker, finalDuration);
+        await sendAudioToBackend(audioBlob, finalSpeaker, finalDuration,UserId);
 
         // Clean up stream
         stream.getTracks().forEach(track => track.stop());
@@ -129,12 +240,13 @@ function Home() {
     setIsRecording(false);
     
     const finalDuration = formatTime(recordingTime);
-    
+    const finalSpeaker = speakerName.trim() || currentUser.displayName;
 
     
     const newCard = {
       count: cards.length + 1,
       id: Date.now(),
+      recordingId: null, 
       duration: finalDuration,
       speakerName: finalSpeaker,
       title: "Processing transcription...",
@@ -148,7 +260,7 @@ function Home() {
     setSpeakerName("");
   };
 
-  const sendAudioToBackend = async (audioBlob, speaker, duration) => {
+  const sendAudioToBackend = async (audioBlob, speaker, duration,UserId) => {
     try {
       console.log("📤 Preparing form data:", {
         speaker,
@@ -161,6 +273,7 @@ function Home() {
       formData.append('speaker', speaker); 
       formData.append('duration', duration.toString()); 
       formData.append('timestamp', new Date().toISOString());
+      formData.append('userId', UserId);
 
       
       console.log("📋 FormData contents:");
@@ -191,6 +304,7 @@ function Home() {
             if (updatedCards.length > 0) {
               updatedCards[0] = {
                 ...updatedCards[0],
+                recordingId: result.recordingId,
                 transcription: result.transcription,
                 title: result.transcription.length > 50 
                   ? result.transcription.substring(0, 50) + '...' 
@@ -373,11 +487,14 @@ function Home() {
               filteredCards.map((card) => (
                 <Card 
                   key={card.id}
+                  cardId={card.recordingId} 
                   count={card.count}
                   duration={card.duration}
                   speaker={card.speakerName}
+                  transcription={card.transcription}
                   title={card.title}
                   onTitleChange={(newTitle) => updateCardTitle(card.id, newTitle)}
+                  onDelete={() => deleteRecording(card.id, card.recordingId)}
                 />
               ))
             )}

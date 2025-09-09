@@ -26,6 +26,11 @@ const recordingSchema = new mongoose.Schema({
         required:true
     },
 
+    userId : {
+        type:String,
+        required:true
+    },
+
     duration : {
         type:Number,
         required:true

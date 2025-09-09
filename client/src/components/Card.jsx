@@ -1,15 +1,21 @@
 import React, { useState ,useEffect} from "react";
 import {Clock , User , Trash2, Bookmark, ZoomIn, Pen} from "lucide-react"
 
-function Card({count, duration, speaker, title, onTitleChange}) {
+function Card({count, duration, speaker, title, onTitleChange,transcription, cardId, onDelete}) {
   const [expanded, setExpanded] = useState(false);
   const [localTitle, setLocalTitle] = useState(title || `Recording#${count}`);
   const [isEditing, setIsEditing] = useState(false); 
+ const [localtranscription, setLocalTranscription] = useState("");
+const [isDeleting, setIsDeleting] = useState(false); 
 
 
   useEffect(() => {
-    setLocalTitle(title || `Recording#${count}`);
+    setLocalTitle(title);
   }, [title, count]);
+
+  useEffect(() => {
+    setLocalTranscription(transcription || "");
+  }, [transcription]);
 
 
   const changeTitle = ()=>{
@@ -36,6 +42,22 @@ function Card({count, duration, speaker, title, onTitleChange}) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) {
+      console.log("❌ No delete function provided");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } catch (error) {
+      console.error("❌ Error in delete handler:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const today = new Date().toLocaleDateString("en-US", {
   day: "2-digit",
   month: "short",
@@ -44,6 +66,10 @@ function Card({count, duration, speaker, title, onTitleChange}) {
 
   const displayTitle = isEditing ? localTitle : (title || localTitle);
 
+  
+
+
+  
   return (
     <div
       
@@ -88,7 +114,7 @@ function Card({count, duration, speaker, title, onTitleChange}) {
         <div className="flex gap-3 text-gray-400">
           <ZoomIn className="cursor-pointer" onClick={() => setExpanded(!expanded)}/>
           <Bookmark className="hover:text-white"/>
-          <Trash2 className="hover:text-red-500"/>
+          <Trash2 onClick={handleDelete} className="hover:text-red-500"/>
         </div>
       </div>
 
@@ -97,8 +123,7 @@ function Card({count, duration, speaker, title, onTitleChange}) {
       <div className="bg-gray-800 p-3 rounded-lg mt-5">
           <h4 className="text-gray-300 font-semibold text-xl mb-2">Transcription</h4>
           <p className="text-gray-400 text-sm leading-relaxed">
-            This is where the full transcription of the audio recording will
-            appear. You can load the entire text here for the user to read.
+            {transcription}
           </p>
         </div>
 

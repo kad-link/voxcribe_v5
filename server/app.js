@@ -22,7 +22,7 @@ const upload = multer({
 
 const transcribeWithWhisper = (audioPath) => {
     return new Promise((resolve, reject) => {
-        // Get the full path to transcribe.py (inside ml folder)
+        
         const scriptPath = path.join(__dirname, 'ml', 'transcribe.py');
         const python = spawn('python3', [scriptPath, audioPath]);
         
@@ -56,7 +56,7 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
     let tempFilePath = null;
     
     try {
-        // Log everything we receive
+        
         console.log("📝 Request body:", req.body);
         console.log("📎 File info:", {
             hasFile: !!req.file,
@@ -71,7 +71,12 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
         }
 
         const audioBuffer = req.file.buffer;
-        const { speaker, duration, timestamp } = req.body;
+        const { speaker, duration, timestamp, userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: "User ID is required" });
+        }
+
         const transcriptionID = uuidv4();
         
         console.log("🎵 Processing audio:", {
@@ -79,21 +84,19 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
             speaker,
             duration,
             timestamp,
+            userId,
             bufferSize: audioBuffer.length
         });
         
-        // Save audio buffer to temporary file
         const fileExtension = req.file.originalname?.split('.').pop() || 'webm';
         tempFilePath = path.join(os.tmpdir(), `${transcriptionID}.${fileExtension}`);
         
         console.log("💾 Writing temp file to:", tempFilePath);
         await fs.writeFile(tempFilePath, audioBuffer);
         
-        // Check if file was actually written
         const stats = await fs.stat(tempFilePath);
         console.log("✅ Temp file created, size:", stats.size);
         
-        // Transcribe using Python Whisper
         console.log("🤖 Starting transcription...");
         const transcriptionText = await transcribeWithWhisper(tempFilePath);
         console.log("✅ Transcription result:", {
@@ -101,18 +104,19 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
             preview: transcriptionText.substring(0, 100) + "..."
         });
         
-        // Prepare data for database
+        
         const recordingData = {
             transcriptionID,
             speaker: speaker || "Unknown Speaker",
             duration: parseFloat(duration) || 0,
             timestamp: new Date(timestamp),
-            transcription: transcriptionText
+            transcription: transcriptionText,
+            userId: userId, 
         };
         
         console.log("💾 Preparing to save:", recordingData);
         
-        // Save to database
+        
         const recording = new Recording(recordingData);
         
         console.log("🔄 Calling recording.save()...");
@@ -139,7 +143,7 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
             code: error.code
         });
         
-        // More specific error handling
+        
         if (error.name === 'ValidationError') {
             console.log("📋 Validation errors:", error.errors);
             return res.status(400).json({
@@ -161,7 +165,7 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
             details: error.message
         });
     } finally {
-        // Clean up temporary file
+        
         if (tempFilePath) {
             try {
                 await fs.unlink(tempFilePath);
@@ -174,38 +178,54 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
     }
 });
 
-// Add this test endpoint to verify database is working
-app.get('/api/test-save', async (req, res) => {
+
+
+
+app.delete('/api/recordings/:recordingId', async (req, res) => {
     try {
-        console.log("🧪 Testing database save...");
+        const { recordingId } = req.params;
+        console.log("🗑️ Attempting to delete recording:", recordingId);
+
         
-        const testRecording = new Recording({
-            transcriptionID: `test-${Date.now()}`,
-            speaker: "Test Speaker",
-            duration: 30,
-            timestamp: new Date(),
-            transcription: "This is a test transcription"
+        const deletedRecording = await Recording.findByIdAndDelete(recordingId);
+
+        if (!deletedRecording) {
+            console.log("❌ Recording not found:", recordingId);
+            return res.status(404).json({
+                success: false,
+                error: "Recording not found"
+            });
+        }
+
+        console.log("✅ Successfully deleted recording:", {
+            id: deletedRecording._id,
+            transcriptionID: deletedRecording.transcriptionID,
+            speaker: deletedRecording.speaker
         });
-        
-        const saved = await testRecording.save();
-        console.log("✅ Test save successful:", saved._id);
-        
+
         res.json({
             success: true,
-            testRecordingId: saved._id,
-            message: "Database save test successful"
+            message: "Recording deleted successfully",
+            deletedRecording: {
+                id: deletedRecording._id,
+                transcriptionID: deletedRecording.transcriptionID,
+                speaker: deletedRecording.speaker
+            }
         });
-        
+
     } catch (error) {
-        console.error("❌ Test save failed:", error);
+        console.error("❌ Error deleting recording:", error);
         res.status(500).json({
-            error: "Database save test failed",
+            success: false,
+            error: "Failed to delete recording",
             details: error.message
         });
     }
 });
 
-// Add this to check existing records
+
+
+
 app.get('/api/recordings', async (req, res) => {
     try {
         const recordings = await Recording.find().sort({ createdAt: -1 }).limit(10);
@@ -223,6 +243,29 @@ app.get('/api/recordings', async (req, res) => {
         });
     }
 });
+
+
+
+app.get('/api/recordings/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const recordings = await Recording.find({ userId }).sort({ createdAt: -1 });
+        
+        res.json({
+            success: true,
+            count: recordings.length,
+            recordings
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: "Failed to fetch user recordings",
+            details: error.message
+        });
+    }
+});
+
+
+
 
 app.listen(3000, () => {
     console.log("Server running on port 3000");
