@@ -2,7 +2,7 @@ import React from "react";
 import icon from "../assets/favicon.jpg"
 import ProfileCard from "./ProfileCard";
 
-function NavBar({onlogout}){
+function NavBar({onlogout, username, email, profile}){
 
 
 
@@ -12,6 +12,8 @@ function NavBar({onlogout}){
         <>
         <div className="Nav-class bg-gray-900 w-full h-[12vh] border-b border-gray-700 text-white flex  items-center px-6 ">
             
+            
+
             <img src={icon} alt=":/" className="h-10 w-10 object-cover rounded-lg" />
             <div>
           <h2 className="text-2xl px-4 font-bold gradient-shift-text tracking-normal"> VOXCRIBE</h2>
@@ -19,14 +21,14 @@ function NavBar({onlogout}){
             </div>
             
             <div className="ml-auto">
-                <ProfileCard onlogout={onlogout}/>
+                <ProfileCard onlogout={onlogout} username={username} email={email} profile={profile}/>
             </div>
             
         </div>
 
-        <style jsx>{`
+        <style>{
         
-        .gradient-shift-text {
+        `.gradient-shift-text {
     background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #8b5cf6, #3b82f6);
     background-size: 400% 400%;
     background-clip: text;

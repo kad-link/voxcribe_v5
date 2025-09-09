@@ -1,6 +1,18 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+require("dotenv").config();
 
-const connectDB = mongoose.connect(process.env.MONGO_URL);
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URL);
+        console.log("✅ MongoDB Connected");
+    } catch (error) {
+        console.error("❌ MongoDB connection failed:", error);
+        process.exit(1);
+    }
+};
+
+connectDB();
+
 
 const recordingSchema = new mongoose.Schema({
     transcriptionID : {
@@ -15,7 +27,7 @@ const recordingSchema = new mongoose.Schema({
     },
 
     duration : {
-        type:String,
+        type:Number,
         required:true
     },
 
@@ -32,4 +44,4 @@ const recordingSchema = new mongoose.Schema({
 
 
 
-export default mongoose.model("recording", recordingSchema);
+module.exports =  mongoose.model("recording", recordingSchema);

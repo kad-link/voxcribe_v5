@@ -1,10 +1,16 @@
-import React, { useState } from "react";
+import React, { useState ,useEffect} from "react";
 import {Clock , User , Trash2, Bookmark, ZoomIn, Pen} from "lucide-react"
 
 function Card({count, duration, speaker, title, onTitleChange}) {
   const [expanded, setExpanded] = useState(false);
   const [localTitle, setLocalTitle] = useState(title || `Recording#${count}`);
   const [isEditing, setIsEditing] = useState(false); 
+
+
+  useEffect(() => {
+    setLocalTitle(title || `Recording#${count}`);
+  }, [title, count]);
+
 
   const changeTitle = ()=>{
       setIsEditing(true);
@@ -25,7 +31,7 @@ function Card({count, duration, speaker, title, onTitleChange}) {
       onTitleChange(localTitle);
     }
     if (e.key === 'Escape') {
-      setLocalTitle(title || `Recording#${count}`);
+      setLocalTitle(title);
       setIsEditing(false); 
     }
   };
@@ -48,7 +54,7 @@ function Card({count, duration, speaker, title, onTitleChange}) {
               {isEditing ? (
               <input
                 type="text"
-                value={localTitle}
+                value={displayTitle}
                 onChange={handleTitleChange}
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
