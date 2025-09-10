@@ -52,21 +52,14 @@ const transcribeWithWhisper = (audioPath) => {
 };
 
 app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
-    console.log("\n🚀 === NEW TRANSCRIBE REQUEST ===");
+    
     let tempFilePath = null;
     
     try {
         
-        console.log("📝 Request body:", req.body);
-        console.log("📎 File info:", {
-            hasFile: !!req.file,
-            originalname: req.file?.originalname,
-            mimetype: req.file?.mimetype,
-            size: req.file?.size
-        });
         
         if (!req.file) {
-            console.log("❌ No file received");
+            console.log("No file received");
             return res.status(400).json({ error: "No audio file provided" });
         }
 
@@ -79,30 +72,17 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
 
         const transcriptionID = uuidv4();
         
-        console.log("🎵 Processing audio:", {
-            transcriptionID,
-            speaker,
-            duration,
-            timestamp,
-            userId,
-            bufferSize: audioBuffer.length
-        });
         
         const fileExtension = req.file.originalname?.split('.').pop() || 'webm';
         tempFilePath = path.join(os.tmpdir(), `${transcriptionID}.${fileExtension}`);
         
-        console.log("💾 Writing temp file to:", tempFilePath);
         await fs.writeFile(tempFilePath, audioBuffer);
         
         const stats = await fs.stat(tempFilePath);
-        console.log("✅ Temp file created, size:", stats.size);
         
-        console.log("🤖 Starting transcription...");
+        
         const transcriptionText = await transcribeWithWhisper(tempFilePath);
-        console.log("✅ Transcription result:", {
-            length: transcriptionText.length,
-            preview: transcriptionText.substring(0, 100) + "..."
-        });
+        
         
         
         const recordingData = {
@@ -114,14 +94,12 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
             userId: userId, 
         };
         
-        console.log("💾 Preparing to save:", recordingData);
         
         
         const recording = new Recording(recordingData);
         
-        console.log("🔄 Calling recording.save()...");
         const savedRecording = await recording.save();
-        console.log("✅ Successfully saved to database:", {
+        console.log("saved to database:", {
             id: savedRecording._id,
             transcriptionID: savedRecording.transcriptionID,
             createdAt: savedRecording.createdAt
@@ -136,7 +114,7 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
         });
         
     } catch(error) {
-        console.error("❌ ERROR DETAILS:", {
+        console.error("ERROR :", {
             name: error.name,
             message: error.message,
             stack: error.stack,
@@ -145,7 +123,7 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
         
         
         if (error.name === 'ValidationError') {
-            console.log("📋 Validation errors:", error.errors);
+            console.log("Validation errors:", error.errors);
             return res.status(400).json({
                 error: "Validation failed",
                 details: error.message,
@@ -169,12 +147,11 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
         if (tempFilePath) {
             try {
                 await fs.unlink(tempFilePath);
-                console.log("🗑️ Temp file cleaned up");
+                console.log("Temp file cleaned up");
             } catch (cleanupError) {
-                console.warn("⚠️ Failed to cleanup temp file:", cleanupError.message);
+                console.warn("Failed to cleanup temp file:", cleanupError.message);
             }
         }
-        console.log("🏁 === REQUEST COMPLETED ===\n");
     }
 });
 
@@ -184,20 +161,19 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
 app.delete('/api/recordings/:recordingId', async (req, res) => {
     try {
         const { recordingId } = req.params;
-        console.log("🗑️ Attempting to delete recording:", recordingId);
+        
 
         
         const deletedRecording = await Recording.findByIdAndDelete(recordingId);
 
         if (!deletedRecording) {
-            console.log("❌ Recording not found:", recordingId);
             return res.status(404).json({
                 success: false,
                 error: "Recording not found"
             });
         }
 
-        console.log("✅ Successfully deleted recording:", {
+        console.log("deleted recording:", {
             id: deletedRecording._id,
             transcriptionID: deletedRecording.transcriptionID,
             speaker: deletedRecording.speaker
@@ -214,7 +190,7 @@ app.delete('/api/recordings/:recordingId', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ Error deleting recording:", error);
+        console.error("Error :", error);
         res.status(500).json({
             success: false,
             error: "Failed to delete recording",

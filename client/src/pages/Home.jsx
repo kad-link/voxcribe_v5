@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from "../firebase/authContext";
 import NavBar from '../components/NavBar';
 import { Mic} from "lucide-react";
@@ -25,18 +24,17 @@ function Home() {
   
   const deleteRecording = async (cardId, recordingId) => {
   if (!recordingId) {
-    console.log("❌ No recording ID available for deletion");
+    console.log("No recording ID available for deletion");
     return;
   }
 
-  // Show confirmation dialog
   const confirmed = window.confirm("Are you sure you want to delete this recording? This action cannot be undone.");
   if (!confirmed) {
     return;
   }
 
   try {
-    console.log("🗑️ Deleting recording:", recordingId);
+    console.log("Deleting recording:", recordingId);
 
     const response = await fetch(`http://localhost:3000/api/recordings/${recordingId}`, {
       method: 'DELETE',
@@ -49,11 +47,9 @@ function Home() {
       const result = await response.json();
       console.log("✅ Recording deleted successfully:", result);
 
-      // Remove the card from the UI immediately
       setCards(prev => prev.filter(card => card.id !== cardId));
       
-      // Optional: Show success message
-      // You could add a toast notification here
+      
       
     } else {
       const errorData = await response.json();
@@ -71,7 +67,7 @@ function Home() {
   const fetchRecordings = async()=>{
 
     if (!currentUser?.uid) {
-        console.log("❌ No user ID available");
+        console.log(" No user ID available");
         setIsLoading(false);
         return;
     }
@@ -90,11 +86,11 @@ function Home() {
 
       if(response.ok){
         const result = await response.json();
-        console.log("✅ Fetched recordings:", result);
+        console.log("Fetched recordings:", result);
 
         const transformedCards = result.recordings.map((recording, index) => ({
           id: recording._id,
-          count: result.recordings.length - index, // Reverse count for newest first
+          count: result.recordings.length - index, 
           recordingId: recording._id,
           duration: formatTime(Math.floor(recording.duration)) || "00:00",
           speakerName: recording.speaker,
@@ -105,14 +101,14 @@ function Home() {
         }));
 
         setCards(transformedCards);
-        console.log("📋 Loaded cards:", transformedCards.length);
+        console.log(" Loaded cards:", transformedCards.length);
       } else {
-        console.error("❌ Failed to fetch recordings:", response.statusText);
+        console.error("Failed to fetch recordings:", response.statusText);
       }
 
       }
       catch(error){
-        console.error("❌ Error fetching recordings:", error);
+        console.error("Error fetching recordings:", error);
       }
       finally {
       setIsLoading(false);
@@ -162,7 +158,7 @@ function Home() {
 
   const startRecording = async () => {
     try {
-      console.log("🎙️ Recording started...");
+      console.log("Recording started...");
       
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -199,7 +195,6 @@ function Home() {
         
         setAudioBlob(audioBlob);
         
-        // Use the stored duration from when recording actually stopped
         const finalSpeaker = speakerName.trim() || currentUser.displayName;
         const finalDuration = recordingDurationRef.current;
         const UserId = currentUser.uid;
@@ -212,7 +207,6 @@ function Home() {
         
         await sendAudioToBackend(audioBlob, finalSpeaker, finalDuration,UserId);
 
-        // Clean up stream
         stream.getTracks().forEach(track => track.stop());
         setAudioStream(null);
       };
@@ -231,7 +225,7 @@ function Home() {
     
     recordingDurationRef.current = recordingTime;
     
-    console.log("🛑 Stopping recording. Duration:", recordingTime, "seconds");
+    console.log("Stopping recording. Duration:", recordingTime, "seconds");
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
@@ -262,11 +256,7 @@ function Home() {
 
   const sendAudioToBackend = async (audioBlob, speaker, duration,UserId) => {
     try {
-      console.log("📤 Preparing form data:", {
-        speaker,
-        duration,
-        audioSize: audioBlob.size
-      });
+      
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
@@ -276,14 +266,6 @@ function Home() {
       formData.append('userId', UserId);
 
       
-      console.log("📋 FormData contents:");
-      for (let [key, value] of formData.entries()) {
-        if (key !== 'audio') {
-          console.log(`  ${key}: ${value}`);
-        } else {
-          console.log(`  ${key}: [Blob, size: ${value.size}]`);
-        }
-      }
 
       const response = await fetch('http://localhost:3000/api/transcribe', {
         method: 'POST',
@@ -295,8 +277,6 @@ function Home() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("✅ Audio uploaded successfully:", result);
-        
         
         if (result.transcription) {
           setCards(prev => {
@@ -316,7 +296,7 @@ function Home() {
         }
       } else {
         const errorText = await response.text();
-        console.error("❌ Failed to upload audio:", response.statusText, errorText);
+        console.error("Failed to upload audio:", response.statusText, errorText);
         
         
         setCards(prev => {
@@ -333,7 +313,7 @@ function Home() {
       }
       
     } catch (error) {
-      console.error("❌ Error sending audio to backend:", error);
+      console.error(" Error sending audio to backend:", error);
       
       
       setCards(prev => {
@@ -386,7 +366,6 @@ function Home() {
     };
   }, [isRecording]);
 
-  // Calculate total stats
   const totalNotes = cards.length;
   const totalDurationSeconds = cards.reduce((total, card) => {
     if (card.duration && card.duration.includes(':')) {

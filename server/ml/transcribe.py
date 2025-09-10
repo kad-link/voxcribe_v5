@@ -7,16 +7,9 @@ def main():
         sys.exit(1)
     
     try:
-        # Load the Whisper model
         model = whisper.load_model("base")
-        
-        # Get audio path from command line argument
         audio_path = sys.argv[1]
-        
-        # Transcribe the audio file
         result = model.transcribe(audio_path)
-        
-        # Print only the transcription text (this will be captured by Node.js)
         print(result["text"])
         
     except Exception as e:
