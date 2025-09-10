@@ -78,7 +78,6 @@ app.post("/api/transcribe", upload.single("audio"), async(req, res) => {
         
         await fs.writeFile(tempFilePath, audioBuffer);
         
-        const stats = await fs.stat(tempFilePath);
         
         
         const transcriptionText = await transcribeWithWhisper(tempFilePath);
@@ -201,24 +200,6 @@ app.delete('/api/recordings/:recordingId', async (req, res) => {
 
 
 
-
-app.get('/api/recordings', async (req, res) => {
-    try {
-        const recordings = await Recording.find().sort({ createdAt: -1 }).limit(10);
-        const count = await Recording.countDocuments();
-        
-        res.json({
-            success: true,
-            count,
-            recordings
-        });
-    } catch (error) {
-        res.status(500).json({
-            error: "Failed to fetch recordings",
-            details: error.message
-        });
-    }
-});
 
 
 
